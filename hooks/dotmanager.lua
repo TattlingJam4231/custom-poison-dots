@@ -123,14 +123,14 @@ function DOTManager:create_dot_data(type, custom_data)
 	local dot_data = deep_clone(tweak_data:get_dot_type_data(type))
 
 	if custom_data then
-		dot_data.dot_damage = custom_data.dot_damage or dot_data.dot_damage
+		dot_data.dot_damage = custom_data.dot_damage/10 or dot_data.dot_damage/10
 		dot_data.dot_can_crit = custom_data.dot_can_crit or false
 		dot_data.dot_length = custom_data.dot_length or dot_data.dot_length
 		dot_data.hurt_animation_chance = custom_data.hurt_animation_chance or dot_data.hurt_animation_chance
 		dot_data.dot_tick_period = custom_data.dot_tick_period or dot_data.dot_tick_period
 		dot_data.scale_length = custom_data.scale_length or nil
-		dot_data.scale_damage = custom_data.scale_damage or nil
-		dot_data.decay_damage = custom_data.decay_damage or nil
+		dot_data.scale_damage = custom_data.scale_damage/10 or nil
+		dot_data.decay_damage = custom_data.decay_damage/10 or nil
 		dot_data.decay_rate = custom_data.decay_rate or nil
 	end
 
