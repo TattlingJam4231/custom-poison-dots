@@ -39,19 +39,19 @@ function DOTManager:update(t, dt)
 	end
 end
 
-function DOTManager:add_doted_enemy(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate, hurt_animation, variant, weapon_id)
-	local dot_info = self:_add_doted_enemy(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate, hurt_animation, variant, weapon_id)
+function DOTManager:add_doted_enemy(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_can_crit, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate, hurt_animation, variant, weapon_id)
+	local dot_info = self:_add_doted_enemy(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_can_crit, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate, hurt_animation, variant, weapon_id)
 end
 
-function DOTManager:sync_add_dot_damage(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate)
+function DOTManager:sync_add_dot_damage(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_can_crit, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate)
 	if enemy_unit then
 		local t = TimerManager:game():time()
 
-		self:_add_doted_enemy(enemy_unit, t, weapon_unit, dot_length, dot_damage, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate)
+		self:_add_doted_enemy(enemy_unit, t, weapon_unit, dot_length, dot_damage, dot_can_crit, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate)
 	end
 end
 
-function DOTManager:_add_doted_enemy(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate, hurt_animation, variant, weapon_id)
+function DOTManager:_add_doted_enemy(enemy_unit, dot_damage_received_time, weapon_unit, dot_length, dot_damage, dot_can_crit, dot_tick_period, scale_length, scale_damage, decay_damage, decay_rate, hurt_animation, variant, weapon_id)
 	local contains = false
 
 	if self._doted_enemies then
@@ -83,6 +83,7 @@ function DOTManager:_add_doted_enemy(enemy_unit, dot_damage_received_time, weapo
 				weapon_unit = weapon_unit,
 				dot_length = dot_length,
 				dot_damage = dot_damage,
+				dot_can_crit = dot_can_crit,
 				dot_tick_period = dot_tick_period,
 				scale_length = scale_length,
 				scale_damage = scale_damage,
@@ -108,12 +109,13 @@ function DOTManager:_damage_dot(dot_info)
 		unit = dot_info.enemy_unit
 	}
 	local damage = dot_info.dot_damage
+	local can_crit = dot_info.dot_can_crit
 	local ignite_character = false
 	local weapon_unit = dot_info.weapon_unit
 	local weapon_id = dot_info.weapon_id
 
 	if dot_info.variant and dot_info.variant == "poison" then
-		PoisonBulletBase:give_damage_dot(col_ray, weapon_unit, attacker_unit, damage, dot_info.hurt_animation, weapon_id)
+		PoisonBulletBase:give_damage_dot(col_ray, weapon_unit, attacker_unit, damage, can_crit, dot_info.hurt_animation, weapon_id)
 	end
 end
 
@@ -122,6 +124,7 @@ function DOTManager:create_dot_data(type, custom_data)
 
 	if custom_data then
 		dot_data.dot_damage = custom_data.dot_damage or dot_data.dot_damage
+		dot_data.dot_can_crit = custom_data.dot_can_crit or false
 		dot_data.dot_length = custom_data.dot_length or dot_data.dot_length
 		dot_data.hurt_animation_chance = custom_data.hurt_animation_chance or dot_data.hurt_animation_chance
 		dot_data.dot_tick_period = custom_data.dot_tick_period or dot_data.dot_tick_period
