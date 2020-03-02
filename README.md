@@ -9,7 +9,8 @@ Vanilla poison dot variables:
   > - dot_length: length of dot in seconds.
 
 Added poison dot variables:
-
+  
+  > - dot_can_crit: if set to true, allows the dot to crit. (defaults to false if not used)
   > - dot_tick_period: time(seconds) between damage ticks.
   > - scale_length: time(seconds) added to length of dot on consecutive hits. (overrides default timer reset)
   > - scale_damage: damage added to dot on consecutive hits. (Divide desired value by ten; for 105 damage, set the variable to 10.5)
