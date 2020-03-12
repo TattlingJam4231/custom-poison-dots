@@ -107,9 +107,8 @@ function CopDamage:damage_dot(attack_data)
 	
 	--modded
 	if attack_data.variant == "fire" then
-		local fire_dot_data = attack_data
-		fire_dot_data.start_dot_dance_antimation = true
-		attack_data.fire_dot_data = fire_dot_data
+			attack_data.fire_dot_data = {}
+			attack_data.fire_dot_data.start_dot_dance_antimation = true
 	end
 	--modded
 	
@@ -292,6 +291,8 @@ function CopDamage:damage_bullet(attack_data)
 		--modded
 		if attack_data.weapon_unit:base()._ammo_data.bullet_class == "FireBulletBase" then
 			result_type = "fire_hurt"
+			attack_data.fire_dot_data = {}
+			attack_data.fire_dot_data.start_dot_dance_antimation = true
 		end
 		--modded
 		
