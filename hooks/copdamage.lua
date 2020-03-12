@@ -16,7 +16,7 @@ function CopDamage:damage_dot(attack_data)
 	end
 	--modded
 	
-
+	
 	damage = self:_apply_damage_reduction(damage)
 	damage = math.clamp(damage, 0, self._HEALTH_INIT)
 	local damage_percent = math.ceil(damage / self._HEALTH_INIT_PRECENT)
@@ -40,13 +40,16 @@ function CopDamage:damage_dot(attack_data)
 				type = "death",
 				variant = attack_data.variant
 			}
-
+			
 			self:die(attack_data)
 			self:chk_killshot(attack_data.attacker_unit, attack_data.variant or "dot", nil, attack_data.weapon_id)
 		end
 	else
 		attack_data.damage = damage
 		local result_type = attack_data.hurt_animation and self:get_damage_type(damage_percent, attack_data.variant) or "dmg_rcv"
+		if attack_data.variant == "fire" then
+			result_type = "fire_hurt"
+		end
 		result = {
 			type = result_type,
 			variant = attack_data.variant
@@ -112,7 +115,7 @@ function CopDamage:damage_dot(attack_data)
 	end
 	--modded
 	
-
+	
 	self:_send_dot_attack_result(attack_data, attacker, damage_percent, attack_data.variant, attack_data.col_ray.ray)
 	self:_on_damage_received(attack_data)
 end
