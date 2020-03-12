@@ -1,14 +1,3 @@
--- 	dot variables
---		hurt_animation_chance: chance for animation on proc
---		dot_damage: damage delt per tick
---		dot_length: duration of dot
---		dot_tick_period: time between each damage tick
---		scale_length: time added each hit on a doted enemy(overrides default dot length refresh)
---		scale_damage: damage added each hit on a doted enemy
---		decay_damage: damage lost per decay tick
---		decay_rate: number of damage ticks per decay tick
---		decay_damage variables override both default dot lenght refresh and scale_length
-
 function DOTManager:update(t, dt)
 	for index = #self._doted_enemies, 1, -1 do
 		local dot_info = self._doted_enemies[index]
