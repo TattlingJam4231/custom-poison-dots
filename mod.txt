@@ -20,6 +20,11 @@
 {
 "hook_id" : "lib/units/enemies/cop/copdamage",
 "script_path" : "hooks/copdamage.lua"
+},
+
+{
+"hook_id" : "lib/units/enemies/cop/actions/full_body/copactionhurt",
+"script_path" : "hooks/copactionhurt.lua"
 }
 
 ]
