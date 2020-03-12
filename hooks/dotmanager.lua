@@ -70,13 +70,6 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 				elseif dot_info.scale_length and scale_length then
 					if diminish_scale_length then
 						dot_info.dot_length = dot_info.dot_length + (scale_length * (diminish_scale_length ^ (dot_info.dot_length - (TimerManager:game():time() - dot_damage_received_time))))
-						
-						
-						-- file = io.open("G:\\Steam\\steamapps\\common\\PAYDAY 2\\mods\\custom-poison-dots-master\\debug-dot_length.txt", "a")
-						-- io.output(file)
-						-- io.write("     ", dot_info.dot_length, "  ", diminish_scale_length, "\n\n")
-						
-						
 					else
 						dot_info.dot_length = dot_info.dot_length + scale_length
 					end
@@ -261,5 +254,3 @@ function DOTManager:_start_enemy_fire_effect(dot_info)
 		tmp_used_flame_objects[idx] = false
 	end
 end
-
-
