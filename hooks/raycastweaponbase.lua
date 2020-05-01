@@ -1,69 +1,70 @@
-function DOTBulletBase:on_collision(col_ray, weapon_unit, user_unit, damage, blank)
-	local result = DOTBulletBase.super.on_collision(self, col_ray, weapon_unit, user_unit, damage, blank, self.NO_BULLET_INPACT_SOUND)
-	local hit_unit = col_ray.unit
+function RaycastWeaponBase:add_ammo(ratio, add_amount_override)
 
-	if hit_unit:character_damage() and hit_unit:character_damage().damage_dot and not hit_unit:character_damage():dead() then
-		result = self:start_dot_damage(col_ray, weapon_unit, user_unit, self:_dot_data_by_weapon(weapon_unit))
-	end
-
-	return result
-end
-
-
-function DOTBulletBase:start_dot_damage(col_ray, weapon_unit, user_unit, dot_data, weapon_id)
-	dot_data = dot_data or self.DOT_DATA
-	local hurt_animation = not dot_data.hurt_animation_chance or math.rand(1) < dot_data.hurt_animation_chance
-	
-	local flammable = nil
-	local char_tweak = tweak_data.character[col_ray.unit:base()._tweak_table]
-	flammable = char_tweak.flammable == nil and true or char_tweak.flammable
-	local distance = 1000
-	local hit_loc = col_ray.hit_position
-
-	if hit_loc and user_unit and user_unit.position then
-		distance = mvector3.distance(hit_loc, user_unit:position())
-	end
-	
-	local dot_max_distance = dot_data.dot_trigger_max_distance
-	local dot_trigger_chance = dot_data.dot_trigger_chance or 100
-
-	local start_dot_damage_roll = math.random(1, 100)
-	
-	if dot_data.variant == "fire" then
-		if not flammable then
-			return
+	local function _add_ammo(ammo_base, ratio, add_amount_override)
+		if ammo_base:get_ammo_max() == ammo_base:get_ammo_total() then
+			return false, 0
 		end
-	end
 
-	if	start_dot_damage_roll <= dot_trigger_chance then
-		if dot_max_distance then
-			if dot_max_distance < distance then
-				return
+		local multiplier_min = 1
+		local multiplier_max = 1
+		
+		--pick up modifiers from attachments don't negate pick up modifiers from skills and perks
+			if ammo_base._ammo_data and ammo_base._ammo_data.ammo_pickup_min_mul then
+				multiplier_min = managers.player:upgrade_value("player", "pick_up_ammo_multiplier", 1)
+				multiplier_min = multiplier_min + managers.player:upgrade_value("player", "pick_up_ammo_multiplier_2", 1) - 1
+				multiplier_min = multiplier_min + managers.player:crew_ability_upgrade_value("crew_scavenge", 0)
+				multiplier_min = multiplier_min * ammo_base._ammo_data.ammo_pickup_min_mul
+			else
+				multiplier_min = managers.player:upgrade_value("player", "pick_up_ammo_multiplier", 1)
+				multiplier_min = multiplier_min + managers.player:upgrade_value("player", "pick_up_ammo_multiplier_2", 1) - 1
+				multiplier_min = multiplier_min + managers.player:crew_ability_upgrade_value("crew_scavenge", 0)
 			end
+
+			if ammo_base._ammo_data and ammo_base._ammo_data.ammo_pickup_max_mul then
+				multiplier_max = managers.player:upgrade_value("player", "pick_up_ammo_multiplier", 1)
+				multiplier_max = multiplier_max + managers.player:upgrade_value("player", "pick_up_ammo_multiplier_2", 1) - 1
+				multiplier_max = multiplier_max + managers.player:crew_ability_upgrade_value("crew_scavenge", 0)
+				multiplier_max = multiplier_max * ammo_base._ammo_data.ammo_pickup_max_mul
+			else
+				multiplier_max = managers.player:upgrade_value("player", "pick_up_ammo_multiplier", 1)
+				multiplier_max = multiplier_max + managers.player:upgrade_value("player", "pick_up_ammo_multiplier_2", 1) - 1
+				multiplier_max = multiplier_max + managers.player:crew_ability_upgrade_value("crew_scavenge", 0)
+			end
+		--
+		local add_amount = add_amount_override
+		local picked_up = true
+
+		if not add_amount then
+			local rng_ammo = math.lerp(ammo_base._ammo_pickup[1] * multiplier_min, ammo_base._ammo_pickup[2] * multiplier_max, math.random())
+			picked_up = rng_ammo > 0
+			add_amount = math.max(0, math.round(rng_ammo))
 		end
-		managers.dot:add_doted_enemy(col_ray, col_ray.unit, TimerManager:game():time(), weapon_unit, dot_data.dot_length, dot_data.dot_damage, dot_data.dot_can_crit, dot_data.dot_tick_period, dot_data.scale_length, dot_data.diminish_scale_length, dot_data.scale_damage, dot_data.decay_damage, dot_data.decay_rate, hurt_animation, dot_data.variant, weapon_id)
-	end
-end
 
-function DOTBulletBase:give_damage_dot(col_ray, weapon_unit, attacker_unit, variant, damage, can_crit, hurt_animation, weapon_id)
-	local action_data = {
-		variant = variant,
-		damage = damage,
-		can_crit = can_crit,
-		weapon_unit = weapon_unit,
-		attacker_unit = attacker_unit,
-		col_ray = col_ray,
-		hurt_animation = hurt_animation,
-		weapon_id = weapon_id
-	}
-	local defense_data = {}
+		add_amount = math.floor(add_amount * (ratio or 1))
 
-	if col_ray and col_ray.unit and alive(col_ray.unit) and col_ray.unit:character_damage() then
-		defense_data = col_ray.unit:character_damage():damage_dot(action_data)
+		ammo_base:set_ammo_total(math.clamp(ammo_base:get_ammo_total() + add_amount, 0, ammo_base:get_ammo_max()))
+
+		return picked_up, add_amount
 	end
 
-	return defense_data
-end
+	local picked_up, add_amount = nil
+	picked_up, add_amount = _add_ammo(self, ratio, add_amount_override)
 
-FireBulletBase = FireBulletBase or class(DOTBulletBase)
-FireBulletBase.VARIANT = "fire"
+	if self.AKIMBO then
+		local akimbo_rounding = self:get_ammo_total() % 2 + #self._fire_callbacks
+
+		if akimbo_rounding > 0 then
+			_add_ammo(self, nil, akimbo_rounding)
+		end
+	end
+
+	for _, gadget in ipairs(self:get_all_override_weapon_gadgets()) do
+		if gadget and gadget.ammo_base then
+			local p, a = _add_ammo(gadget:ammo_base(), ratio, add_amount_override)
+			picked_up = p or picked_up
+			add_amount = add_amount + a
+		end
+	end
+
+	return picked_up, add_amount
+end
