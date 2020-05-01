@@ -63,7 +63,6 @@ function DOTBulletBase:start_dot_damage(col_ray, weapon_unit, user_unit, dot_dat
 			end
 		end
 		managers.dot:add_doted_enemy(col_ray, col_ray.unit, TimerManager:game():time(), weapon_unit, dot_data, weapon_id)
-		--managers.dot:add_doted_enemy(col_ray, col_ray.unit, TimerManager:game():time(), weapon_unit, dot_data.dot_length, dot_data.dot_damage, dot_data.dot_can_crit, dot_data.dot_tick_period, dot_data.scale_length, dot_data.diminish_scale_length, dot_data.length_cap, dot_data.scale_damage, dot_data.decay_damage, dot_data.decay_rate, hurt_animation, dot_data.variant, weapon_id)
 	end
 end
 
@@ -89,3 +88,6 @@ end
 
 FireBulletBase = FireBulletBase or class(DOTBulletBase)
 FireBulletBase.VARIANT = "fire"
+
+function FireBulletBase:play_impact_sound_and_effects(weapon_unit, col_ray, no_sound)
+end

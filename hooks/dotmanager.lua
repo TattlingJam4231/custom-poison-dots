@@ -11,8 +11,8 @@ function DOTManager:update(t, dt)
 			
 			dot_info.decay_counter = dot_info.decay_counter + 1
 			
-			if dot_info.decay_damage and dot_info.decay_counter == dot_info.decay_rate then
-				dot_info.dot_damage = dot_info.dot_damage - dot_info.decay_damage
+			if dot_info.damage_decay and dot_info.decay_counter == dot_info.damage_decay_rate then
+				dot_info.dot_damage = dot_info.dot_damage - dot_info.damage_decay
 				
 				dot_info.decay_counter = 0
 			end
@@ -50,6 +50,7 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 	if self._doted_enemies then
 		for _, dot_info in ipairs(self._doted_enemies) do
 			if dot_info.enemy_unit == enemy_unit and dot_info.variant == dot_data.variant then
+				--update dot_damage
 				if dot_info.scale_damage and dot_data.scale_damage then
 					if dot_info.damage_cap then
 						dot_info.dot_damage = math.min(dot_info.dot_damage + dot_data.scale_damage, dot_info.damage_cap)
@@ -58,11 +59,13 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 					end
 				end
 				
-				if dot_info.decay_damage and dot_info.decay_rate then
-					dot_info.dot_length = ((dot_info.dot_damage / dot_info.decay_damage) * dot_info.decay_rate * dot_info.dot_tick_period) + 0.1
+				--update dot_length
+				if dot_info.damage_decay and dot_info.damage_decay_rate then
+					dot_info.dot_length = ((dot_info.dot_damage / dot_info.damage_decay) * dot_info.damage_decay_rate * dot_info.dot_tick_period) + 0.1
 				elseif dot_info.scale_length and dot_data.scale_length then
 					if dot_info.diminish_scale_length then
-						dot_info.dot_length = dot_info.dot_length + (dot_data.scale_length * (dot_info.diminish_scale_length ^ (dot_info.dot_length - (TimerManager:game():time() - dot_damage_received_time))))
+						local remaining_duration = dot_info.dot_length - (TimerManager:game():time() - dot_damage_received_time)
+						dot_info.dot_length = dot_info.dot_length + (dot_data.scale_length * (dot_info.diminish_scale_length ^ remaining_duration))
 					elseif dot_info.length_cap then
 						dot_info.dot_length = math.min(dot_info.dot_length + dot_data.scale_length, dot_info.length_cap)
 					else
@@ -73,6 +76,11 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 					dot_info.dot_length = dot_data.dot_length
 				end
 				
+				--update dot_tick_period
+				if dot_info.scale_tick_period and dot_data.scale_tick_period then
+					dot_info.dot_tick_period = math.max(dot_info.dot_tick_period - dot_data.scale_tick_period, dot_info.min_tick_period)
+				end
+				
 				dot_info.hurt_animation = dot_info.hurt_animation or dot_data.hurt_animation
 				contains = true
 			end
@@ -80,28 +88,37 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 
 		if not contains then
 			local dot_info = {
+				--Misc variables
 				col_ray = col_ray,
 				dot_counter = 0,
 				enemy_unit = enemy_unit,
 				dot_damage_received_time = dot_damage_received_time,
 				weapon_unit = weapon_unit,
-				dot_length = dot_data.dot_length,
-				dot_damage = dot_data.dot_damage,
+				weapon_id = weapon_id,
+				variant = dot_data.variant,
+				hurt_animation = dot_data.hurt_animation,
 				dot_can_crit = dot_data.dot_can_crit,
-				dot_tick_period = dot_data.dot_tick_period,
-				scale_length = dot_data.scale_length,
-				diminish_scale_length = dot_data.diminish_scale_length,
-				length_cap = dot_data.length_cap,
+				
+				--Damage variables
+				dot_damage = dot_data.dot_damage,
 				scale_damage = dot_data.scale_damage,
 				damage_cap = dot_data.damage_cap,
-				decay_damage = dot_data.decay_damage,
-				decay_rate = dot_data.decay_rate,
-				hurt_animation = dot_data.hurt_animation,
-				variant = dot_data.variant,
-				weapon_id = weapon_id
+				damage_decay = dot_data.damage_decay,
+				damage_decay_rate = dot_data.damage_decay_rate,
+				
+				--Length variables
+				dot_length = dot_data.dot_length,
+				scale_length = dot_data.scale_length,
+				length_cap = dot_data.length_cap,
+				diminish_scale_length = dot_data.diminish_scale_length,
+				
+				--Tick Period variables
+				dot_tick_period = dot_data.dot_tick_period,
+				scale_tick_period = dot_data.scale_tick_period,
+				min_tick_period = dot_data.min_tick_period
 			}
-			if dot_info.decay_damage and dot_info.decay_rate then
-					dot_info.dot_length = ((dot_info.dot_damage / dot_info.decay_damage) * dot_info.decay_rate * dot_info.dot_tick_period) + 0.1
+			if dot_info.damage_decay and dot_info.damage_decay_rate then
+					dot_info.dot_length = ((dot_info.dot_damage / dot_info.damage_decay) * dot_info.damage_decay_rate * dot_info.dot_tick_period) + 0.1
 			end
 
 			table.insert(self._doted_enemies, dot_info)
@@ -147,33 +164,42 @@ function DOTManager:create_dot_data(type, custom_data)
 	local dot_data = dot_types[type]
 
 	if custom_data then
+		--Misc variables
 		dot_data.variant = type
+		dot_data.dot_trigger_chance = custom_data.dot_trigger_chance or 100
+		dot_data.hurt_animation_chance = custom_data.hurt_animation_chance or 0
+		dot_data.dot_trigger_max_distance = custom_data.dot_trigger_max_distance
+		dot_data.dot_can_crit = custom_data.dot_can_crit or false
+		
+		--Damage variables
 		if custom_data.damage then
 			dot_data.dot_damage = custom_data.damage/10
 		else
 			dot_data.dot_damage = custom_data.dot_damage or dot_data.dot_damage
 		end
-		dot_data.dot_can_crit = custom_data.dot_can_crit or false
-		dot_data.dot_length = custom_data.dot_length or dot_data.dot_length
-		dot_data.hurt_animation_chance = custom_data.hurt_animation_chance or 0
-		dot_data.dot_tick_period = custom_data.dot_tick_period or dot_data.dot_tick_period
-		dot_data.dot_trigger_max_distance = custom_data.dot_trigger_max_distance
-		dot_data.dot_trigger_chance = custom_data.dot_trigger_chance or 100
-		dot_data.scale_length = custom_data.scale_length or nil
-		if custom_data.diminish_scale_length and 0 <= custom_data.diminish_scale_length and custom_data.diminish_scale_length<= 1 then
-			dot_data.diminish_scale_length = custom_data.diminish_scale_length
-		end
-		dot_data.length_cap = custom_data.length_cap or nil
 		if custom_data.scale_damage then
 			dot_data.scale_damage = custom_data.scale_damage/10
-		end
-		if custom_data.decay_damage then
-			dot_data.decay_damage = custom_data.decay_damage/10
 		end
 		if custom_data.damage_cap then
 			dot_data.damage_cap = custom_data.damage_cap/10
 		end
-		dot_data.decay_rate = custom_data.decay_rate or nil
+		if custom_data.damage_decay then
+			dot_data.damage_decay = custom_data.damage_decay/10
+		end
+		dot_data.damage_decay_rate = custom_data.damage_decay_rate
+		
+		--Length variables
+		dot_data.dot_length = custom_data.dot_length or dot_data.dot_length
+		dot_data.scale_length = custom_data.scale_length
+		dot_data.length_cap = custom_data.length_cap
+		if custom_data.diminish_scale_length and 0 <= custom_data.diminish_scale_length and custom_data.diminish_scale_length<= 1 then
+			dot_data.diminish_scale_length = custom_data.diminish_scale_length
+		end
+		
+		--Tick Period variables
+		dot_data.dot_tick_period = custom_data.dot_tick_period or dot_data.dot_tick_period
+		dot_data.scale_tick_period = custom_data.scale_tick_period
+		dot_data.min_tick_period = custom_data.min_tick_period or 0.1
 	end
 
 	return dot_data
