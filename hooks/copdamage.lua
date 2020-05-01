@@ -223,9 +223,9 @@ function CopDamage:damage_bullet(attack_data)
 	--modded
 	local weapon_name_id = attack_data.weapon_unit:base()._name_id
 	local disallow_headshot_damage = 0
-	if attack_data.weapon_unit:base()._ammo_data and attack_data.weapon_unit:base()._ammo_data.disallow_headshot_damage then
+	if attack_data.weapon_unit:base()._ammo_data then
 		disallow_headshot_damage = attack_data.weapon_unit:base()._ammo_data.disallow_headshot_damage
-	elseif tweak_data.weapon[weapon_name_id] and tweak_data.weapon[weapon_name_id].disallow_headshot_damage then
+	elseif  tweak_data.weapon[weapon_name_id] then
 		disallow_headshot_damage = tweak_data.weapon[weapon_name_id].disallow_headshot_damage
 	end
 
