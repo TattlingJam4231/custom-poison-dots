@@ -417,3 +417,37 @@ function CopDamage:damage_bullet(attack_data)
 
 	return result
 end
+
+function CopDamage:roll_critical_hit(attack_data)
+	local damage = attack_data.damage
+
+	if not self:can_be_critical(attack_data) then
+		return false, damage
+	end
+	
+	local base_crit = 0
+	if attack_data.weapon_unit and attack_data.weapon_unit:base()._ammo_data then
+		base_crit = attack_data.weapon_unit:base()._ammo_data.crit_chance or 0
+	end
+	
+	local critical_hits = self._char_tweak.critical_hits or {}
+	local critical_hit = false
+	local critical_value = base_crit + (critical_hits.base_chance or 0) + managers.player:critical_hit_chance() * (critical_hits.player_chance_multiplier or 1)
+
+	if critical_value > 0 then
+		local critical_roll = math.rand(1)
+		critical_hit = critical_roll < critical_value
+	end
+
+	if critical_hit then
+		local critical_damage_mul = critical_hits.damage_mul or self._char_tweak.headshot_dmg_mul
+
+		if critical_damage_mul then
+			damage = damage * critical_damage_mul
+		else
+			damage = self._health * 10
+		end
+	end
+
+	return critical_hit, damage
+end
