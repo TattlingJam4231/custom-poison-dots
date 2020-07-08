@@ -26,7 +26,7 @@ function CopDamage:damage_dot(attack_data)
 	if self._immortal then
 		damage = math.min(damage, self._health - 1)
 	end
-
+	
 	if self._health <= damage then
 		if self:check_medic_heal() then
 			attack_data.variant = "healed"
@@ -418,6 +418,16 @@ function CopDamage:damage_bullet(attack_data)
 	return result
 end
 
+local add_crit = 0
+function CopDamage:add_crit_chance(attack_data)
+	add_crit = 0
+	if attack_data.variant and attack_data.variant == "fire" then
+		--nothing
+	elseif attack_data.weapon_unit and attack_data.weapon_unit:base()._ammo_data then
+		add_crit = attack_data.weapon_unit:base()._ammo_data.crit_chance or 0
+	end
+end
+
 function CopDamage:roll_critical_hit(attack_data)
 	local damage = attack_data.damage
 
@@ -425,14 +435,11 @@ function CopDamage:roll_critical_hit(attack_data)
 		return false, damage
 	end
 	
-	local base_crit = 0
-	if attack_data.weapon_unit and attack_data.weapon_unit:base()._ammo_data then
-		base_crit = attack_data.weapon_unit:base()._ammo_data.crit_chance or 0
-	end
+	self:add_crit_chance(attack_data)
 	
 	local critical_hits = self._char_tweak.critical_hits or {}
 	local critical_hit = false
-	local critical_value = base_crit + (critical_hits.base_chance or 0) + managers.player:critical_hit_chance() * (critical_hits.player_chance_multiplier or 1)
+	local critical_value = add_crit + (critical_hits.base_chance or 0) + managers.player:critical_hit_chance() * (critical_hits.player_chance_multiplier or 1)
 
 	if critical_value > 0 then
 		local critical_roll = math.rand(1)
