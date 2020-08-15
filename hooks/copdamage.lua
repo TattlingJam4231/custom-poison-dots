@@ -435,7 +435,7 @@ function CopDamage:roll_critical_hit(attack_data)
 		return false, damage
 	end
 	
-	self:add_crit_chance(attack_data)
+	CopDamage:add_crit_chance(attack_data)
 	
 	local critical_hits = self._char_tweak.critical_hits or {}
 	local critical_hit = false
