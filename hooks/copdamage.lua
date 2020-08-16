@@ -426,6 +426,12 @@ function CopDamage:add_crit_chance(attack_data)
 	elseif attack_data.weapon_unit and attack_data.weapon_unit:base()._ammo_data then
 		add_crit = attack_data.weapon_unit:base()._ammo_data.crit_chance or 0
 	end
+	
+	if managers.player.get_gambler_crit_bonus then
+		if managers.player:has_category_upgrade("temporary", "loose_ammo_crit_bonus") then
+			add_crit = add_crit + managers.player:get_gambler_crit_bonus()
+		end
+	end
 end
 
 function CopDamage:roll_critical_hit(attack_data)
