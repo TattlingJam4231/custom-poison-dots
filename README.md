@@ -1,6 +1,6 @@
 # custom-poison-dots
 
-Mod for Payday 2 that adds more options for poison dot behaviors. Intended to be used as a dependency for other mods.
+Mod for Payday 2 that adds more options for poison dot behaviors. This mod does nothing on its own as it is meant ot be used as a dependecy for other mods.
 
 Vanilla dot variables:
   
