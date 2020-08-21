@@ -63,9 +63,18 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 				if dot_info.damage_decay and dot_info.damage_decay_rate then
 					dot_info.dot_length = ((dot_info.dot_damage / dot_info.damage_decay) * dot_info.damage_decay_rate * dot_info.dot_tick_period) + 0.1
 				elseif dot_info.scale_length and dot_data.scale_length then
+				
+					local elapsed_time = (TimerManager:game():time() - dot_info.dot_damage_received_time)
+					dot_info.dot_length = dot_info.dot_length - elapsed_time
+					dot_info.dot_damage_received_time = dot_damage_received_time
+					
 					if dot_info.diminish_scale_length then
-						local remaining_duration = dot_info.dot_length - (TimerManager:game():time() - dot_damage_received_time)
-						dot_info.dot_length = dot_info.dot_length + (dot_data.scale_length * (dot_info.diminish_scale_length ^ remaining_duration))
+						if dot_info.length_cap then
+							dot_info.dot_length = math.max(math.min(dot_info.dot_length + dot_data.scale_length, dot_info.length_cap), dot_info.dot_length + (dot_data.scale_length * (dot_info.diminish_scale_length ^ dot_info.dot_length)))
+						else
+							dot_info.dot_length = dot_info.dot_length + (dot_data.scale_length * (dot_info.diminish_scale_length ^ dot_info.dot_length))
+						end
+						
 					elseif dot_info.length_cap then
 						dot_info.dot_length = math.min(dot_info.dot_length + dot_data.scale_length, dot_info.length_cap)
 					else
