@@ -1,5 +1,5 @@
 {
-"name" : "Custom Poison Dots",
+"name" : "Custom Poison Dots Developer",
 "description" : "",
 "author" : "Oryo",
 "image" : "oryo.png",
