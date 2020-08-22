@@ -9,7 +9,7 @@
 	{
 		"identifier" : "TattlingJam4231CustomPoisonDots",
 		"host" : {
-			"meta" : "https://github.com/TattlingJam4231/custom-poison-dots/raw/master/Custom%20Poison%20Dots/meta.json"
+			"meta" : "https://github.com/TattlingJam4231/custom-poison-dots/raw/master/Custom_Poison_Dots/meta.json"
 		}
 	}
 ],
