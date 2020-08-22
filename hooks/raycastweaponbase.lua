@@ -9,6 +9,27 @@ function DOTBulletBase:on_collision(col_ray, weapon_unit, user_unit, damage, bla
 	return result
 end
 
+function DOTBulletBase:_dot_data_by_weapon(weapon_unit)
+	if not alive(weapon_unit) then
+		return nil
+	end
+
+	if weapon_unit:base()._ammo_data and weapon_unit:base()._ammo_data.dot_data then
+		local ammo_dot_data = weapon_unit:base()._ammo_data.dot_data
+		
+		return managers.dot:create_dot_data(ammo_dot_data.type, ammo_dot_data.custom_data)
+	elseif weapon_unit.base and weapon_unit:base()._name_id then
+		local weapon_name_id = weapon_unit:base()._name_id
+
+		if tweak_data.weapon[weapon_name_id] and tweak_data.weapon[weapon_name_id].dot_data then
+			dot_data = tweak_data.weapon[weapon_name_id].dot_data
+			
+			return managers.dot:create_dot_data(dot_data.type, dot_data.custom_data)
+		end
+	end
+
+	return nil
+end
 
 function DOTBulletBase:start_dot_damage(col_ray, weapon_unit, user_unit, dot_data, weapon_id)
 	dot_data = dot_data or self.DOT_DATA
@@ -41,7 +62,7 @@ function DOTBulletBase:start_dot_damage(col_ray, weapon_unit, user_unit, dot_dat
 				return
 			end
 		end
-		managers.dot:add_doted_enemy(col_ray, col_ray.unit, TimerManager:game():time(), weapon_unit, dot_data.dot_length, dot_data.dot_damage, dot_data.dot_can_crit, dot_data.dot_tick_period, dot_data.scale_length, dot_data.diminish_scale_length, dot_data.scale_damage, dot_data.decay_damage, dot_data.decay_rate, hurt_animation, dot_data.variant, weapon_id)
+		managers.dot:add_doted_enemy(col_ray, col_ray.unit, TimerManager:game():time(), weapon_unit, dot_data, weapon_id)
 	end
 end
 
@@ -67,3 +88,6 @@ end
 
 FireBulletBase = FireBulletBase or class(DOTBulletBase)
 FireBulletBase.VARIANT = "fire"
+
+function FireBulletBase:play_impact_sound_and_effects(weapon_unit, col_ray, no_sound)
+end
