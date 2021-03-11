@@ -4,7 +4,7 @@ Mod for Payday 2 that adds more options for poison dot behaviors. This mod does 
 
 Vanilla dot variables:
   
-  - hurt_animation_chance: percent chance for hurt animation to play for affected enemy. (value between 0-100)
+  - hurt_animation_chance: percent chance for hurt animation to play for affected enemy. (value between 0-1)
   - dot_damage: damage dealt per tick. (divide desired damage value by ten; for 105 damage, set the variable to 10.5)
   - dot_length: length of dot in seconds.
 
