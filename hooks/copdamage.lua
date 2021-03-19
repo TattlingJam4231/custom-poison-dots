@@ -1,143 +1,55 @@
---[[
-   Save Table to File
-   Load Table from File
-   v 1.0
-   
-   Lua 5.2 compatible
-   
-   Only Saves Tables, Numbers and Strings
-   Insides Table References are saved
-   Does not save Userdata, Metatables, Functions and indices of these
-   ----------------------------------------------------
-   table.save( table , filename )
-   
-   on failure: returns an error msg
-   
-   ----------------------------------------------------
-   table.load( filename or stringtable )
-   
-   Loads a table that has been saved via the table.save function
-   
-   on success: returns a previously saved table
-   on failure: returns as second argument an error msg
-   ----------------------------------------------------
-   
-   Licensed under the same terms as Lua itself.
-]]--
-do
-   -- declare local variables
-   --// exportstring( string )
-   --// returns a "Lua" portable version of the string
-   local function exportstring( s )
-      return string.format("%q", s)
-   end
-
-   --// The Save Function
-   function table.save(  tbl,filename )
-      local charS,charE = "   ","\n"
-      local file,err = io.open( filename, "wb" )
-      if err then return err end
-
-      -- initiate variables for save procedure
-      local tables,lookup = { tbl },{ [tbl] = 1 }
-      file:write( "return {"..charE )
-
-      for idx,t in ipairs( tables ) do
-         file:write( "-- Table: {"..idx.."}"..charE )
-         file:write( "{"..charE )
-         local thandled = {}
-
-         for i,v in ipairs( t ) do
-            thandled[i] = true
-            local stype = type( v )
-            -- only handle value
-            if stype == "table" then
-               if not lookup[v] then
-                  table.insert( tables, v )
-                  lookup[v] = #tables
-               end
-               file:write( charS.."{"..lookup[v].."},"..charE )
-            elseif stype == "string" then
-               file:write(  charS..exportstring( v )..","..charE )
-            elseif stype == "number" then
-               file:write(  charS..tostring( v )..","..charE )
-            end
-         end
-
-         for i,v in pairs( t ) do
-            -- escape handled values
-            if (not thandled[i]) then
-            
-               local str = ""
-               local stype = type( i )
-               -- handle index
-               if stype == "table" then
-                  if not lookup[i] then
-                     table.insert( tables,i )
-                     lookup[i] = #tables
-                  end
-                  str = charS.."[{"..lookup[i].."}]="
-               elseif stype == "string" then
-                  str = charS.."["..exportstring( i ).."]="
-               elseif stype == "number" then
-                  str = charS.."["..tostring( i ).."]="
-               end
-            
-               if str ~= "" then
-                  stype = type( v )
-                  -- handle value
-                  if stype == "table" then
-                     if not lookup[v] then
-                        table.insert( tables,v )
-                        lookup[v] = #tables
-                     end
-                     file:write( str.."{"..lookup[v].."},"..charE )
-                  elseif stype == "string" then
-                     file:write( str..exportstring( v )..","..charE )
-                  elseif stype == "number" then
-                     file:write( str..tostring( v )..","..charE )
-                  end
-               end
-            end
-         end
-         file:write( "},"..charE )
-      end
-      file:write( "}" )
-      file:close()
-   end
-   
-   --// The Load Function
-   function table.load( sfile )
-      local ftables,err = loadfile( sfile )
-      if err then return _,err end
-      local tables = ftables()
-      for idx = 1,#tables do
-         local tolinki = {}
-         for i,v in pairs( tables[idx] ) do
-            if type( v ) == "table" then
-               tables[idx][i] = tables[v[1]]
-            end
-            if type( i ) == "table" and tables[i[1]] then
-               table.insert( tolinki,{ i,tables[i[1]] } )
-            end
-         end
-         -- link indices
-         for _,v in ipairs( tolinki ) do
-            tables[idx][v[2]],tables[idx][v[1]] =  tables[idx][v[1]],nil
-         end
-      end
-      return tables[1]
-   end
--- close do
+function CopDamage:_init_function_tables()
+	CopDamage.add_crit_chance_table = {}
 end
 
--- ChillCode
+function CopDamage:sort_table_by_weight(tbl)
+	local temp = deep_clone(tbl)
+	tbl = {}
+	local min = 1
+	local mid = 1
+	local max = 0
+	
+	for i, func in ipairs(temp) do
+		if max == 0 then
+			table.insert(tbl, func)
+			max = table.getn(tbl)
+		else
+			while true do
+				mid = math.ceil((min + max) / 2)
+				if tbl[mid]("weight") == func("weight") then
+					table.insert(tbl, mid, func)
+					break
+				end
+				if min == max then
+					if func("weight") > tbl[max]("weight") then
+						table.insert(tbl, max + 1, func)
+						break
+					end
+					if func("weight") < tbl[min]("weight") then
+						table.insert(tbl, min - 1, func)
+						break
+					end
+					table.insert(tbl, mid, func)
+					break
+				end
+				if func("weight") > tbl[mid]("weight") then
+					min = mid + 1
+				else
+					max = mid - 1
+				end
+			end
+		end
+	end
+end
+	
+local original_function = CopDamage.init
 
-
-
-
-
-
+function CopDamage:init(unit)
+	original_function(self, unit)
+	
+	self:_init_function_tables()
+	self:sort_table_by_weight(CopDamage.add_crit_chance_table)
+end
 
 function CopDamage:damage_dot(attack_data)
 	if self._dead or self._invulnerable then
@@ -151,7 +63,7 @@ function CopDamage:damage_dot(attack_data)
 	--modded
 	local is_civilian = CopDamage.is_civilian(self._unit:base()._tweak_table)
 	
-	if attack_data.attacker_unit == managers.player:player_unit() and attack_data.can_crit then
+	if attack_data.attacker_unit == managers.player:player_unit() and attack_data.dot_can_crit then
 		local critical_hit, crit_damage = self:roll_critical_hit(attack_data)
 		damage = crit_damage
 	end
@@ -233,8 +145,7 @@ function CopDamage:damage_dot(attack_data)
 		}
 
 		managers.statistics:killed_by_anyone(data)
-		
-		
+
 		--modded
 		if not is_civilian and managers.player:has_category_upgrade("temporary", "overkill_damage_multiplier") and attacker_unit == managers.player:player_unit() and alive(attack_data.weapon_unit) and not attack_data.weapon_unit:base().thrower_unit and attack_data.weapon_unit:base().is_category and attack_data.weapon_unit:base():is_category("shotgun", "saw") then
 			managers.player:activate_temporary_upgrade("temporary", "overkill_damage_multiplier")
@@ -344,13 +255,20 @@ function CopDamage:damage_bullet(attack_data)
 
 	local headshot = false
 	local headshot_multiplier = 1
-
+	
 	if attack_data.attacker_unit == managers.player:player_unit() then
-		local critical_hit, crit_damage = self:roll_critical_hit(attack_data)
+		local damage_scale = nil
 
+		if alive(attack_data.weapon_unit) and attack_data.weapon_unit:base() and attack_data.weapon_unit:base().is_weak_hit then
+			local weak_hit = attack_data.weapon_unit:base():is_weak_hit(attack_data.col_ray and attack_data.col_ray.distance, attack_data.attacker_unit)
+			damage_scale = weak_hit and 0.5 or 1
+		end
+
+		local critical_hit, crit_damage = self:roll_critical_hit(attack_data)
+		
 		if critical_hit then
 			managers.hud:on_crit_confirmed()
-
+			
 			damage = crit_damage
 			attack_data.critical_hit = true
 		else
@@ -395,15 +313,15 @@ function CopDamage:damage_bullet(attack_data)
 	--modded
 	
 
-	if attack_data.weapon_unit:base().get_add_head_shot_mul then
-		local add_head_shot_mul = attack_data.weapon_unit:base():get_add_head_shot_mul()
+	-- if attack_data.weapon_unit:base().get_add_head_shot_mul then
+	-- 	local add_head_shot_mul = attack_data.weapon_unit:base():get_add_head_shot_mul()
 
-		if not head and add_head_shot_mul and self._char_tweak and self._char_tweak.access ~= "tank" then
-			local tweak_headshot_mul = math.max(0, self._char_tweak.headshot_dmg_mul - 1)
-			local mul = tweak_headshot_mul * add_head_shot_mul + 1
-			damage = damage * mul
-		end
-	end
+	-- 	if not head and add_head_shot_mul and self._char_tweak and self._char_tweak.access ~= "tank" then
+	-- 		local tweak_headshot_mul = math.max(0, self._char_tweak.headshot_dmg_mul - 1)
+	-- 		local mul = tweak_headshot_mul * add_head_shot_mul + 1
+	-- 		damage = damage * mul
+	-- 	end
+	-- end
 
 	damage = self:_apply_damage_reduction(damage)
 	attack_data.raw_damage = damage
@@ -450,7 +368,8 @@ function CopDamage:damage_bullet(attack_data)
 		
 		
 		--modded
-		if attack_data.weapon_unit:base()._ammo_data and attack_data.weapon_unit:base()._ammo_data.bullet_class == "FireBulletBase" then
+		local bullet_class = attack_data.weapon_unit:base()._ammo_data and attack_data.weapon_unit:base()._ammo_data.bullet_class
+		if bullet_class == "FireBulletBase" or bullet_class == "FlameBulletBase" then
 			result_type = "fire_hurt"
 			attack_data.fire_dot_data = {}
 			attack_data.fire_dot_data.start_dot_dance_antimation = true
@@ -571,10 +490,9 @@ end
 
 function CopDamage:add_crit_chance(attack_data)
 	local add_crit = 0
-	if attack_data.variant and attack_data.variant == "fire" then
-		--nothing
-	elseif attack_data.weapon_unit and attack_data.weapon_unit:base()._ammo_data then
-		add_crit = attack_data.weapon_unit:base()._ammo_data.crit_chance or 0
+	
+	for i, f in ipairs(CopDamage.add_crit_chance_table) do
+		add_crit = f(self, {add_crit = add_crit, attack_data = attack_data})
 	end
 	
 	if managers.player.get_gambler_crit_bonus then

@@ -1,31 +1,82 @@
+function DOTManager:_init_function_tables()
+	self.update_table = {}
+	self._add_doted_enemy_table = {}
+	self._add_new_doted_enemy_table = {}
+	self.create_dot_data_table = {}
+end
+
+function DOTManager:sort_table_by_weight(tbl)
+	local temp = deep_clone(tbl)
+	tbl = {}
+	local min = 1
+	local mid = 1
+	local max = 0
+	
+	for i, func in ipairs(temp) do
+		if max == 0 then
+			table.insert(tbl, func)
+			max = table.getn(tbl)
+		else
+			while true do
+				mid = math.ceil((min + max) / 2)
+				if tbl[mid]("weight") == func("weight") then
+					table.insert(tbl, mid, func)
+					break
+				end
+				if min == max then
+					if func("weight") > tbl[max]("weight") then
+						table.insert(tbl, max + 1, func)
+						break
+					end
+					if func("weight") < tbl[min]("weight") then
+						table.insert(tbl, min - 1, func)
+						break
+					end
+					table.insert(tbl, mid, func)
+					break
+				end
+				if func("weight") > tbl[mid]("weight") then
+					min = mid + 1
+				else
+					max = mid - 1
+				end
+			end
+		end
+	end
+end
+
+function DOTManager:init()
+	self._doted_enemies = {}
+	self._dot_grace_period = 0.25
+	self:_init_function_tables()
+	self:sort_table_by_weight(self.update_table)
+	self:sort_table_by_weight(self._add_doted_enemy_table)
+	self:sort_table_by_weight(self._add_new_doted_enemy_table)
+	self:sort_table_by_weight(self.create_dot_data_table)
+end
+
 function DOTManager:update(t, dt)
 	for index = #self._doted_enemies, 1, -1 do
 		local dot_info = self._doted_enemies[index]
 		
-		local tickrate = dot_info.dot_tick_period or 0.5
-		
-		dot_info.decay_counter = dot_info.decay_counter or 0
-		
-		if t > dot_info.dot_damage_received_time and dot_info.dot_counter >= tickrate then
+		if dot_info.dot_counter >= dot_info.dot_tick_period then
 			self:_damage_dot(dot_info)
-			
-			dot_info.decay_counter = dot_info.decay_counter + 1
-			
-			if dot_info.damage_decay and dot_info.decay_counter == dot_info.damage_decay_rate then
-				dot_info.dot_damage = dot_info.dot_damage - dot_info.damage_decay
-				
-				dot_info.decay_counter = 0
-			end
-			
 			dot_info.dot_counter = 0
 		end
-
+		
+		--insert functions here
+		for i, f in ipairs(self.update_table) do
+			f(self, {t = t, dt = dt, dot_info = dot_info})
+		end
+		
 		if t > dot_info.dot_damage_received_time + dot_info.dot_length then
 			if dot_info.variant == "fire" then
 				self:_remove_flame_effects_from_doted_unit(dot_info.enemy_unit)
 				self:_stop_burn_body_sound(dot_info.sound_source)
 			end
 			table.remove(self._doted_enemies, index)
+		-- elseif dot_info.enemy_unit:dead() then
+			-- table.remove(self._doted_enemies, index)
 		else
 			dot_info.dot_counter = dot_info.dot_counter + dt
 		end
@@ -49,45 +100,16 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 
 	if self._doted_enemies then
 		for _, dot_info in ipairs(self._doted_enemies) do
+				
 			if dot_info.enemy_unit == enemy_unit and dot_info.variant == dot_data.variant then
-				--update dot_damage
-				if dot_info.scale_damage and dot_data.scale_damage then
-					if dot_info.damage_cap then
-						dot_info.dot_damage = math.min(dot_info.dot_damage + dot_data.scale_damage, dot_info.damage_cap)
-					else
-						dot_info.dot_damage = dot_info.dot_damage + dot_data.scale_damage
-					end
+				if not dot_info.reset_dot_length and dot_info.dot_damage_received_time + dot_info.dot_length < dot_damage_received_time + dot_length then
+					dot_info.dot_damage_received_time = dot_damage_received_time
+					dot_info.dot_length = dot_length
 				end
 				
-				--update dot_length
-				if dot_info.damage_decay and dot_info.damage_decay_rate then
-					dot_info.dot_length = ((dot_info.dot_damage / dot_info.damage_decay) * dot_info.damage_decay_rate * dot_info.dot_tick_period) + 0.1
-				elseif dot_info.scale_length and dot_data.scale_length then
-				
-					local elapsed_time = (TimerManager:game():time() - dot_info.dot_damage_received_time)
-					dot_info.dot_length = dot_info.dot_length - elapsed_time
-					dot_info.dot_damage_received_time = dot_damage_received_time
-					
-					if dot_info.diminish_scale_length then
-						if dot_info.length_cap then
-							dot_info.dot_length = math.max(math.min(dot_info.dot_length + dot_data.scale_length, dot_info.length_cap), dot_info.dot_length + (dot_data.scale_length * (dot_info.diminish_scale_length ^ dot_info.dot_length)))
-						else
-							dot_info.dot_length = dot_info.dot_length + (dot_data.scale_length * (dot_info.diminish_scale_length ^ dot_info.dot_length))
-						end
-						
-					elseif dot_info.length_cap then
-						dot_info.dot_length = math.min(dot_info.dot_length + dot_data.scale_length, dot_info.length_cap)
-					else
-						dot_info.dot_length = dot_info.dot_length + dot_data.scale_length
-					end
-				elseif dot_info.dot_damage_received_time + dot_info.dot_length < dot_damage_received_time + dot_data.dot_length then
-					dot_info.dot_damage_received_time = dot_damage_received_time
-					dot_info.dot_length = dot_data.dot_length
-				end
-				
-				--update dot_tick_period
-				if dot_info.scale_tick_period and dot_data.scale_tick_period then
-					dot_info.dot_tick_period = math.max(dot_info.dot_tick_period - dot_data.scale_tick_period, dot_info.min_tick_period)
+				--insert functions here
+				for i, f in ipairs(self._add_doted_enemy_table) do
+					f(self, {dot_info = dot_info, dot_data = dot_data, col_ray = col_ray, enemy_unit = enemy_unit, dot_damage_received_time = dot_damage_received_time, weapon_unit = weapon_unit, weapon_id = weapon_id})
 				end
 				
 				dot_info.hurt_animation = dot_info.hurt_animation or dot_data.hurt_animation
@@ -96,40 +118,20 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 		end
 
 		if not contains then
-			local dot_info = {
-				--Misc variables
-				col_ray = col_ray,
-				dot_counter = 0,
-				enemy_unit = enemy_unit,
-				dot_damage_received_time = dot_damage_received_time,
-				weapon_unit = weapon_unit,
-				weapon_id = weapon_id,
-				variant = dot_data.variant,
-				hurt_animation = dot_data.hurt_animation,
-				dot_can_crit = dot_data.dot_can_crit,
-				
-				--Damage variables
-				dot_damage = dot_data.dot_damage,
-				scale_damage = dot_data.scale_damage,
-				damage_cap = dot_data.damage_cap,
-				damage_decay = dot_data.damage_decay,
-				damage_decay_rate = dot_data.damage_decay_rate,
-				
-				--Length variables
-				dot_length = dot_data.dot_length,
-				scale_length = dot_data.scale_length,
-				length_cap = dot_data.length_cap,
-				diminish_scale_length = dot_data.diminish_scale_length,
-				
-				--Tick Period variables
-				dot_tick_period = dot_data.dot_tick_period,
-				scale_tick_period = dot_data.scale_tick_period,
-				min_tick_period = dot_data.min_tick_period
-			}
-			if dot_info.damage_decay and dot_info.damage_decay_rate then
-					dot_info.dot_length = ((dot_info.dot_damage / dot_info.damage_decay) * dot_info.damage_decay_rate * dot_info.dot_tick_period) + 0.1
+			local dot_info = deep_clone(dot_data)
+			
+			dot_info.col_ray = col_ray
+			dot_info.dot_counter = 0
+			dot_info.enemy_unit = enemy_unit
+			dot_info.dot_damage_received_time = dot_damage_received_time
+			dot_info.weapon_unit = weapon_unit
+			dot_info.weapon_id = weapon_id
+			
+			--insert functions here
+			for i, f in ipairs(self._add_new_doted_enemy_table) do
+				f(self, {dot_info = dot_info, dot_data = dot_data, col_ray = col_ray, enemy_unit = enemy_unit, dot_damage_received_time = dot_damage_received_time, weapon_unit = weapon_unit, weapon_id = weapon_id})
 			end
-
+			
 			table.insert(self._doted_enemies, dot_info)
 			
 			if dot_data.variant == "fire" then
@@ -143,19 +145,16 @@ function DOTManager:_add_doted_enemy(col_ray, enemy_unit, dot_damage_received_ti
 end
 
 function DOTManager:_damage_dot(dot_info)
-	local attacker_unit = managers.player:player_unit()
-	local col_ray = dot_info.col_ray
-	local damage = dot_info.dot_damage
-	local can_crit = dot_info.dot_can_crit
-	local weapon_unit = dot_info.weapon_unit
-	local weapon_id = dot_info.weapon_id
+	local action_data = dot_info
+	action_data.attacker_unit = managers.player:player_unit()
+	action_data.damage = dot_info.dot_damage
 
-	if dot_info.variant and (dot_info.variant == "poison" or dot_info.variant == "fire") then
-		DOTBulletBase:give_damage_dot(col_ray, weapon_unit, attacker_unit, dot_info.variant, damage, can_crit, dot_info.hurt_animation, weapon_id)
+	if dot_info.variant then
+		DOTBulletBase:give_damage_dot(action_data)
 	end
 end
 
-function DOTManager:create_dot_data(type, custom_data)
+function DOTManager:create_dot_data(dot_info)
 	local dot_types = {
 		poison = {
 			damage_class = "PoisonBulletBase",
@@ -170,47 +169,33 @@ function DOTManager:create_dot_data(type, custom_data)
 		}
 	}
 	
-	local dot_data = dot_types[type]
+	local dot_data = dot_types[dot_info.type]
 
-	if custom_data then
-		--Misc variables
-		dot_data.variant = type
+	if dot_info.custom_data then
+		local custom_data = dot_info.custom_data
+		
+		dot_data.variant = dot_info.type
 		dot_data.dot_trigger_chance = custom_data.dot_trigger_chance or 100
 		dot_data.hurt_animation_chance = custom_data.hurt_animation_chance or 0
 		dot_data.dot_trigger_max_distance = custom_data.dot_trigger_max_distance
 		dot_data.dot_can_crit = custom_data.dot_can_crit or false
-		
-		--Damage variables
 		if custom_data.damage then
 			dot_data.dot_damage = custom_data.damage/10
 		else
 			dot_data.dot_damage = custom_data.dot_damage or dot_data.dot_damage
 		end
-		if custom_data.scale_damage then
-			dot_data.scale_damage = custom_data.scale_damage/10
-		end
-		if custom_data.damage_cap then
-			dot_data.damage_cap = custom_data.damage_cap/10
-		end
-		if custom_data.damage_decay then
-			dot_data.damage_decay = custom_data.damage_decay/10
-		end
-		dot_data.damage_decay_rate = custom_data.damage_decay_rate
-		
-		--Length variables
 		dot_data.dot_length = custom_data.dot_length or dot_data.dot_length
-		dot_data.scale_length = custom_data.scale_length
-		dot_data.length_cap = custom_data.length_cap
-		if custom_data.diminish_scale_length and 0 <= custom_data.diminish_scale_length and custom_data.diminish_scale_length<= 1 then
-			dot_data.diminish_scale_length = custom_data.diminish_scale_length
+		if custom_data.reset_dot_length == nil then
+			dot_data.reset_dot_length = true
 		end
-		
-		--Tick Period variables
 		dot_data.dot_tick_period = custom_data.dot_tick_period or dot_data.dot_tick_period
-		dot_data.scale_tick_period = custom_data.scale_tick_period
-		dot_data.min_tick_period = custom_data.min_tick_period or 0.1
+		
+		--insert functions here
+		for i, f in ipairs(self.create_dot_data_table) do
+			f(self, {dot_info = dot_info, dot_data = dot_data})
+		end
 	end
-
+	
 	return dot_data
 end
 
